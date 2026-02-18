@@ -59,6 +59,55 @@ type listDNSResponse struct {
 	Records []DNSRecord `json:"records,omitempty"`
 }
 
+type editDNSRequest struct {
+	authBody
+	Name    string `json:"name,omitempty"`
+	Type    string `json:"type"`
+	Content string `json:"content"`
+	TTL     string `json:"ttl"`
+}
+
+type Domain struct {
+	Domain     string `json:"domain"`
+	Status     string `json:"status"`
+	TLD        string `json:"tld"`
+	CreateDate string `json:"createDate"`
+	ExpireDate string `json:"expireDate"`
+	AutoRenew  any    `json:"autoRenew"`
+}
+
+type listDomainsResponse struct {
+	Status  string   `json:"status"`
+	Message string   `json:"message,omitempty"`
+	Domains []Domain `json:"domains,omitempty"`
+}
+
+type TLDPricing struct {
+	Registration string `json:"registration"`
+	Renewal      string `json:"renewal"`
+	Transfer     string `json:"transfer"`
+}
+
+type pricingResponse struct {
+	Status  string                `json:"status"`
+	Message string                `json:"message,omitempty"`
+	Pricing map[string]TLDPricing `json:"pricing,omitempty"`
+}
+
+type SSLBundle struct {
+	CertificateChain string `json:"certificatechain"`
+	PrivateKey       string `json:"privatekey"`
+	PublicKey        string `json:"publickey"`
+}
+
+type sslResponse struct {
+	Status           string `json:"status"`
+	Message          string `json:"message,omitempty"`
+	CertificateChain string `json:"certificatechain,omitempty"`
+	PrivateKey       string `json:"privatekey,omitempty"`
+	PublicKey        string `json:"publickey,omitempty"`
+}
+
 type deleteRequest struct {
 	authBody
 }
@@ -163,4 +212,148 @@ func (c *Client) ListRecords(domain string) ([]DNSRecord, error) {
 	}
 
 	return result.Records, nil
+}
+
+// EditRecord edits a DNS record by domain and record ID.
+func (c *Client) EditRecord(domain, id, name, recordType, content, ttl string) error {
+	req := editDNSRequest{
+		authBody: authBody{APIKey: c.APIKey, SecretAPIKey: c.SecretAPIKey},
+		Name:     name,
+		Type:     recordType,
+		Content:  content,
+		TTL:      ttl,
+	}
+
+	var result dnsResponse
+	if err := c.post("/dns/edit/"+domain+"/"+id, req, &result); err != nil {
+		return err
+	}
+
+	if result.Status != "SUCCESS" {
+		return fmt.Errorf("porkbun error: %s", result.Message)
+	}
+
+	return nil
+}
+
+// EditRecordByType edits DNS records by domain, type, and optional subdomain.
+func (c *Client) EditRecordByType(domain, recordType, subdomain, content, ttl string) error {
+	endpoint := "/dns/editByNameType/" + domain + "/" + recordType
+	if subdomain != "" {
+		endpoint += "/" + subdomain
+	}
+
+	req := editDNSRequest{
+		authBody: authBody{APIKey: c.APIKey, SecretAPIKey: c.SecretAPIKey},
+		Content:  content,
+		Type:     recordType,
+		TTL:      ttl,
+	}
+
+	var result dnsResponse
+	if err := c.post(endpoint, req, &result); err != nil {
+		return err
+	}
+
+	if result.Status != "SUCCESS" {
+		return fmt.Errorf("porkbun error: %s", result.Message)
+	}
+
+	return nil
+}
+
+// DeleteRecordByType deletes DNS records by domain, type, and optional subdomain.
+func (c *Client) DeleteRecordByType(domain, recordType, subdomain string) error {
+	endpoint := "/dns/deleteByNameType/" + domain + "/" + recordType
+	if subdomain != "" {
+		endpoint += "/" + subdomain
+	}
+
+	req := deleteRequest{
+		authBody: authBody{APIKey: c.APIKey, SecretAPIKey: c.SecretAPIKey},
+	}
+
+	var result dnsResponse
+	if err := c.post(endpoint, req, &result); err != nil {
+		return err
+	}
+
+	if result.Status != "SUCCESS" {
+		return fmt.Errorf("porkbun error: %s", result.Message)
+	}
+
+	return nil
+}
+
+// ListRecordsByType returns DNS records for a domain filtered by type and optional subdomain.
+func (c *Client) ListRecordsByType(domain, recordType, subdomain string) ([]DNSRecord, error) {
+	endpoint := "/dns/retrieveByNameType/" + domain + "/" + recordType
+	if subdomain != "" {
+		endpoint += "/" + subdomain
+	}
+
+	req := authBody{APIKey: c.APIKey, SecretAPIKey: c.SecretAPIKey}
+
+	var result listDNSResponse
+	if err := c.post(endpoint, req, &result); err != nil {
+		return nil, err
+	}
+
+	if result.Status != "SUCCESS" {
+		return nil, fmt.Errorf("porkbun error: %s", result.Message)
+	}
+
+	return result.Records, nil
+}
+
+// ListDomains returns all domains in the account.
+func (c *Client) ListDomains() ([]Domain, error) {
+	req := authBody{APIKey: c.APIKey, SecretAPIKey: c.SecretAPIKey}
+
+	var result listDomainsResponse
+	if err := c.post("/domain/listAll", req, &result); err != nil {
+		return nil, err
+	}
+
+	if result.Status != "SUCCESS" {
+		return nil, fmt.Errorf("porkbun error: %s", result.Message)
+	}
+
+	return result.Domains, nil
+}
+
+// GetPricing returns pricing for all TLDs. Returns a map of TLD to pricing info.
+func (c *Client) GetPricing() (map[string]TLDPricing, error) {
+	req := struct{}{}
+
+	var result pricingResponse
+	if err := c.post("/pricing/get", req, &result); err != nil {
+		return nil, err
+	}
+
+	if result.Status != "SUCCESS" {
+		return nil, fmt.Errorf("porkbun error: %s", result.Message)
+	}
+
+	return result.Pricing, nil
+}
+
+// RetrieveSSL retrieves the SSL certificate bundle for a domain.
+func (c *Client) RetrieveSSL(domain string) (*SSLBundle, error) {
+	req := authBody{APIKey: c.APIKey, SecretAPIKey: c.SecretAPIKey}
+
+	var result sslResponse
+	if err := c.post("/ssl/retrieve/"+domain, req, &result); err != nil {
+		return nil, err
+	}
+
+	if result.Status != "SUCCESS" {
+		return nil, fmt.Errorf("porkbun error: %s", result.Message)
+	}
+
+	return &SSLBundle{
+		CertificateChain: result.CertificateChain,
+		PrivateKey:       result.PrivateKey,
+		PublicKey:        result.PublicKey,
+	}, nil
 }
