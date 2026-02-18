@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dukerupert/shadowfax/internal/porkbun"
+	"github.com/dukerupert/shadowfax/pkg/porkbun"
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )
