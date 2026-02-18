@@ -2,7 +2,7 @@
 
 > *"Shadowfax, lord of all horses."* — Gandalf
 
-A small CLI tool for managing [Porkbun](https://porkbun.com) DNS records via their JSON API.
+A CLI tool for managing [Porkbun](https://porkbun.com) DNS records, domains, and SSL certificates via their JSON API. Part of the [arnor](https://github.com/fireflysoftware) infrastructure management suite.
 
 ## Installation
 
@@ -20,7 +20,11 @@ go build -o shadowfax .
 
 ## Configuration
 
-Shadowfax looks for credentials in `~/.dotfiles/.env`, falling back to a `.env` in the current directory.
+Shadowfax loads credentials from multiple sources (highest priority first):
+
+1. Environment variables (`PORKBUN_API_KEY` / `PORKBUN_SECRET_KEY`)
+2. Config file (`~/.config/shadowfax/config.yaml`)
+3. Dotfiles (`~/.dotfiles/.env`) or local `.env`
 
 ```bash
 cp .env.example ~/.dotfiles/.env
@@ -34,34 +38,95 @@ PORKBUN_API_KEY=pk1_your_api_key_here
 PORKBUN_SECRET_KEY=sk1_your_secret_key_here
 ```
 
+Or use a config file at `~/.config/shadowfax/config.yaml`:
+
+```yaml
+api_key: pk1_your_api_key_here
+secret_key: sk1_your_secret_key_here
+```
+
 ## Usage
 
-### Create a record
+### Verify credentials
 
 ```bash
-# A record (root)
+shadowfax ping
+```
+
+### DNS records
+
+```bash
+# Create an A record (root domain)
 shadowfax dns create --domain example.com --type A --content 1.2.3.4
 
-# CNAME for www
-shadowfax dns create --domain example.com --type CNAME --name www --content example.com
+# Create a CNAME for www with custom TTL
+shadowfax dns create --domain example.com --type CNAME --name www --content example.com --ttl 300
 
-# Custom TTL
-shadowfax dns create --domain example.com --type A --content 1.2.3.4 --ttl 300
+# List all records
+shadowfax dns list --domain example.com
+
+# List records filtered by type
+shadowfax dns list-by-type --domain example.com --type A
+
+# Edit a record by ID
+shadowfax dns edit --domain example.com --id 123456 --type A --content 5.6.7.8
+
+# Edit records by type
+shadowfax dns edit-by-type --domain example.com --type A --content 5.6.7.8
+
+# Delete a record by ID
+shadowfax dns delete --domain example.com --id 123456
+
+# Delete records by type
+shadowfax dns delete-by-type --domain example.com --type A
 ```
 
 Default TTL is `600` seconds.
 
-### List records
+### Domains
 
 ```bash
-shadowfax dns list --domain example.com
+# List all domains in your account
+shadowfax domain list
+
+# Get pricing for a specific TLD
+shadowfax domain pricing --tld com
+
+# Get pricing for all TLDs
+shadowfax domain pricing
 ```
 
-### Delete a record
+### SSL certificates
 
 ```bash
-# Get the record ID from dns list first
-shadowfax dns delete --domain example.com --id 123456
+# Print certificate bundle to stdout
+shadowfax ssl retrieve --domain example.com
+
+# Save certificate files to a directory
+shadowfax ssl retrieve --domain example.com --output /path/to/certs
+```
+
+### Global flags
+
+```bash
+# JSON output for scripting
+shadowfax dns list --domain example.com --output json
+
+# Quiet mode (errors only)
+shadowfax dns create --domain example.com --type A --content 1.2.3.4 --quiet
+```
+
+### Shell completion
+
+```bash
+# Bash
+source <(shadowfax completion bash)
+
+# Zsh
+source <(shadowfax completion zsh)
+
+# Fish
+shadowfax completion fish | source
 ```
 
 ## License
