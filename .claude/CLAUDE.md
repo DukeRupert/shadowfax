@@ -22,7 +22,7 @@ Two-layer design separating CLI from API:
 - **`main.go`** — Entry point, calls `cmd.Execute()`
 - **`cmd/root.go`** — Root Cobra command; loads credentials from `~/.dotfiles/.env` (preferred) or `./.env` (fallback) via `PersistentPreRunE`; initializes a global `client`
 - **`cmd/dns.go`** — Four commands: `ping`, `dns create`, `dns list`, `dns delete`. Flags defined in `init()`, commands wired hierarchically
-- **`internal/porkbun/client.go`** — HTTP client wrapping Porkbun's JSON POST API (`https://api.porkbun.com/api/json/v3`). Auth credentials embedded in every request body. All responses checked for `status == "SUCCESS"`
+- **`pkg/porkbun/client.go`** — HTTP client wrapping Porkbun's JSON POST API (`https://api.porkbun.com/api/json/v3`). Auth credentials embedded in every request body. All responses checked for `status == "SUCCESS"`. Exported under `pkg/` so external projects (e.g. arnor) can import it
 
 ## Key Conventions
 
